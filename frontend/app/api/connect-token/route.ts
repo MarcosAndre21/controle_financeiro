@@ -18,9 +18,8 @@ export async function POST(req: Request) {
     const clientUserId = body.clientUserId ? String(body.clientUserId) : "usuario-padrao";
 
     // Correção: Passe apenas o clientUserId, nunca um itemId aqui!
-    const connectToken = await pluggy.createConnectToken({
-      clientUserId,
-    });
+  // ✅ Passando apenas a string (conforme a mensagem de erro pede)
+const connectToken = await pluggy.createConnectToken(clientUserId);
 
     return NextResponse.json({ accessToken: connectToken.accessToken });
   } catch (error: unknown) {
