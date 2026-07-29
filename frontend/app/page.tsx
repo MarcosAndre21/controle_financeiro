@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { PieChart, Pie, Tooltip, ResponsiveContainer } from 'recharts/es6';
+
+import dynamic from 'next/dynamic';
+
+const PieChart = dynamic(() => import('recharts').then((mod) => mod.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then((mod) => mod.Pie), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
 
 interface Conta { id: number; nome: string; instituicao: string; saldo_inicial: number; }
 interface Cartao { id: number; nome: string; limite: number; dia_fechamento: number; dia_vencimento: number; }
