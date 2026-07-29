@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { PieChart, Pie, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Tooltip, ResponsiveContainer } from 'recharts/es6';
 
 interface Conta { id: number; nome: string; instituicao: string; saldo_inicial: number; }
 interface Cartao { id: number; nome: string; limite: number; dia_fechamento: number; dia_vencimento: number; }
