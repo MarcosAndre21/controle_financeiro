@@ -1,31 +1,33 @@
-# Arquivo: backend/database.py
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import urllib.parse # Importação necessária para lidar com senhas complexas
+from dotenv import load_dotenv
 
-# 1. Defina seus dados de acesso separadamente
-USUARIO = "postgres"
-SENHA = "VrPost@Server" # Pode colocar sua senha real, mesmo com @
-SERVIDOR = "localhost:8745"
-BANCO_DE_DADOS = "finance_db"
+# Carrega as variáveis de ambiente (do arquivo .env na sua máquina)
+load_dotenv()
 
-# 2. Codifica a senha para evitar erros com caracteres especiais
-senha_codificada = urllib.parse.quote_plus(SENHA)
+# Pega a URL do banco (No seu PC, ele lê o .env com a URL Externa. No Render, ele lê a configuração do painel com a URL Interna)
+DATABASE_URL = os.getenv("postgresql://finance_db_wuj1_user:gr65JZ43VPSL6V8WkLy0iRnVHxH4XyFY@dpg-d9lq6dajnfac73b2caig-a.oregon-postgres.render.com/finance_db_wuj1")
 
-# 3. Monta a URL de forma segura
-SQLALCHEMY_DATABASE_URL = f"postgresql://{USUARIO}:{senha_codificada}@{SERVIDOR}/{BANCO_DE_DADOS}"
+# Segurança caso a URL não seja encontrada
+if not DATABASE_URL:
+    raise ValueError("A variável de ambiente DATABASE_URL não foi encontrada!")
+
+# Correção obrigatória: SQLAlchemy exige 'postgresql://', mas o Render às vezes gera 'postgres://'
+if DATABASE_URL.startswith("postgresql://finance_db_wuj1_user:gr65JZ43VPSL6V8WkLy0iRnVHxH4XyFY@dpg-d9lq6dajnfac73b2caig-a.oregon-postgres.render.com/finance_db_wuj1"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Cria o "motor" de conexão com o banco
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(DATABASE_URL)
 
-# Configura a sessão que será usada para realizar as consultas
+# Configura a sessão
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Classe base que usaremos para criar os modelos das tabelas
+# Classe base para os modelos
 Base = declarative_base()
 
-# Função auxiliar para injetar o banco de dados nas rotas da API
+# Função auxiliar de injeção de dependência
 def get_db():
     db = SessionLocal()
     try:
