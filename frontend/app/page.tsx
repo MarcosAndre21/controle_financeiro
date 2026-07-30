@@ -26,6 +26,9 @@ interface Orcamento { id: number; limite: number; mes_ano: string; categoria_id:
 interface MetaEconomia { id: number; titulo: string; valor_alvo: number; valor_atual: number; data_limite?: string; usuario_id: number; }
 interface FluxoCaixaMes { mes: string; entradas: number; saidas: number; liquido: number; }
 
+// Define a URL da API dinamicamente (Vercel na nuvem ou Localhost no PC)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 const CORES_GRAFICO = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 const PERGUNTAS_OPCOES = [
@@ -110,12 +113,12 @@ export default function App() {
   const buscarDados = async (userId: number) => {
     setCarregando(true);
     try {
-      const resContas = await fetch(`http://localhost:8000/usuarios/${userId}/contas/`);
-      const resCartoes = await fetch(`http://localhost:8000/usuarios/${userId}/cartoes/`);
-      const resCategorias = await fetch(`http://localhost:8000/usuarios/${userId}/categorias/`);
-      const resOrcamentos = await fetch(`http://localhost:8000/usuarios/${userId}/orcamentos/`);
-      const resMetas = await fetch(`http://localhost:8000/usuarios/${userId}/metas-economia/`);
-      const resFluxo = await fetch(`http://localhost:8000/usuarios/${userId}/fluxo-caixa/`);
+      const resContas = await fetch(`${API_URL}/usuarios/${userId}/contas/`);
+      const resCartoes = await fetch(`${API_URL}/usuarios/${userId}/cartoes/`);
+      const resCategorias = await fetch(`${API_URL}/usuarios/${userId}/categorias/`);
+      const resOrcamentos = await fetch(`${API_URL}/usuarios/${userId}/orcamentos/`);
+      const resMetas = await fetch(`${API_URL}/usuarios/${userId}/metas-economia/`);
+      const resFluxo = await fetch(`${API_URL}/usuarios/${userId}/fluxo-caixa/`);
       
       let listaContas: Conta[] = [];
       if (resContas.ok) {
@@ -131,7 +134,7 @@ export default function App() {
 
       let todasTransacoes: Transacao[] = [];
       for (const conta of listaContas) {
-        const resT = await fetch(`http://localhost:8000/contas/${conta.id}/transacoes/`);
+        const resT = await fetch(`${API_URL}/contas/${conta.id}/transacoes/`);
         if (resT.ok) {
           const dadosT = await resT.json();
           todasTransacoes = [...todasTransacoes, ...dadosT];
@@ -205,7 +208,7 @@ export default function App() {
         return;
       }
       try {
-        const res = await fetch('http://localhost:8000/usuarios/', {
+        const res = await fetch(`${API_URL}/usuarios/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(authForm)
@@ -232,7 +235,7 @@ export default function App() {
       }
     } else if (telaAuth === 'login') {
       try {
-        const res = await fetch('http://localhost:8000/auth/login', {
+        const res = await fetch(`${API_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: authForm.email, senha: authForm.senha })
@@ -260,7 +263,7 @@ export default function App() {
     e.preventDefault();
     setAuthErro('');
     try {
-      const res = await fetch(`http://localhost:8000/auth/perguntas/${emailRecuperacao}`);
+      const res = await fetch(`${API_URL}/auth/perguntas/${emailRecuperacao}`);
       if (res.ok) {
         const data = await res.json();
         setPerguntasRecuperacao(data);
@@ -278,7 +281,7 @@ export default function App() {
     e.preventDefault();
     setAuthErro('');
     try {
-      const res = await fetch('http://localhost:8000/auth/validar-respostas', {
+      const res = await fetch(`${API_URL}/auth/validar-respostas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -310,7 +313,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8000/auth/redefinir-senha', {
+      const res = await fetch(`${API_URL}/auth/redefinir-senha`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailRecuperacao, nova_senha: novaSenhaRecuperacao })
@@ -336,7 +339,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(`http://localhost:8000/usuarios/${usuarioLogado?.id}/alterar-senha`, {
+      const res = await fetch(`${API_URL}/usuarios/${usuarioLogado?.id}/alterar-senha`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -372,7 +375,7 @@ export default function App() {
     if (!nomeCategoria) return; 
 
     try {
-      const res = await fetch(`http://localhost:8000/usuarios/${usuarioLogado.id}/categorias/`, {
+      const res = await fetch(`${API_URL}/usuarios/${usuarioLogado.id}/categorias/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nome: nomeCategoria, tipo: formTransacao.tipo })
@@ -404,7 +407,7 @@ export default function App() {
     };
 
     try {
-      const url = transacaoEditandoId ? `http://localhost:8000/transacoes/${transacaoEditandoId}` : 'http://localhost:8000/transacoes/';
+      const url = transacaoEditandoId ? `${API_URL}/transacoes/${transacaoEditandoId}` : `${API_URL}/transacoes/`;
       const method = transacaoEditandoId ? 'PUT' : 'POST';
       const res = await fetch(url, {
         method, headers: { 'Content-Type': 'application/json' },
@@ -437,7 +440,7 @@ export default function App() {
 
   const handleAlternarPago = async (t: Transacao) => {
     try {
-      const res = await fetch(`http://localhost:8000/transacoes/${t.id}`, {
+      const res = await fetch(`${API_URL}/transacoes/${t.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -470,7 +473,7 @@ export default function App() {
     };
 
     try {
-      const res = await fetch(`http://localhost:8000/usuarios/${usuarioLogado.id}/contas/`, {
+      const res = await fetch(`${API_URL}/usuarios/${usuarioLogado.id}/contas/`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
@@ -494,7 +497,7 @@ export default function App() {
     };
 
     try {
-      const res = await fetch(`http://localhost:8000/usuarios/${usuarioLogado.id}/cartoes/`, {
+      const res = await fetch(`${API_URL}/usuarios/${usuarioLogado.id}/cartoes/`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
@@ -509,7 +512,7 @@ export default function App() {
   const handleExcluirCartao = async (id: number) => {
     if (!confirm("Deseja excluir este cartão de crédito?")) return;
     try {
-      const res = await fetch(`http://localhost:8000/cartoes/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/cartoes/${id}`, { method: 'DELETE' });
       if (res.ok && usuarioLogado) {
         if (cartaoSelecionadoVisualizacao === id) setCartaoSelecionadoVisualizacao('todos');
         buscarDados(usuarioLogado.id);
@@ -528,7 +531,7 @@ export default function App() {
     };
 
     try {
-      const url = orcamentoEditandoId ? `http://localhost:8000/orcamentos/${orcamentoEditandoId}` : `http://localhost:8000/usuarios/${usuarioLogado.id}/orcamentos/`;
+      const url = orcamentoEditandoId ? `${API_URL}/orcamentos/${orcamentoEditandoId}` : `${API_URL}/usuarios/${usuarioLogado.id}/orcamentos/`;
       const method = orcamentoEditandoId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -557,7 +560,7 @@ export default function App() {
   const handleExcluirOrcamento = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este teto de gastos?")) return;
     try {
-      const res = await fetch(`http://localhost:8000/orcamentos/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/orcamentos/${id}`, { method: 'DELETE' });
       if (res.ok && usuarioLogado) buscarDados(usuarioLogado.id);
     } catch (e) { console.error(e); }
   };
@@ -574,7 +577,7 @@ export default function App() {
     };
 
     try {
-      const url = metaEditandoId ? `http://localhost:8000/metas-economia/${metaEditandoId}` : `http://localhost:8000/usuarios/${usuarioLogado.id}/metas-economia/`;
+      const url = metaEditandoId ? `${API_URL}/metas-economia/${metaEditandoId}` : `${API_URL}/usuarios/${usuarioLogado.id}/metas-economia/`;
       const method = metaEditandoId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -603,7 +606,7 @@ export default function App() {
   const handleExcluirMeta = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir esta meta de economia?")) return;
     try {
-      const res = await fetch(`http://localhost:8000/metas-economia/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/metas-economia/${id}`, { method: 'DELETE' });
       if (res.ok && usuarioLogado) buscarDados(usuarioLogado.id);
     } catch (e) { console.error(e); }
   };
@@ -615,7 +618,7 @@ export default function App() {
     if (isNaN(valor) || valor <= 0) return alert("Valor inválido.");
 
     try {
-      const res = await fetch(`http://localhost:8000/metas-economia/${metaId}/adicionar?valor=${valor}`, {
+      const res = await fetch(`${API_URL}/metas-economia/${metaId}/adicionar?valor=${valor}`, {
         method: 'PUT'
       });
       if (res.ok && usuarioLogado) buscarDados(usuarioLogado.id);
@@ -627,7 +630,7 @@ export default function App() {
     if (!usuarioLogado) return;
     if (!confirm("Excluir esta conta e suas transações?")) return;
     try {
-      const res = await fetch(`http://localhost:8000/contas/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/contas/${id}`, { method: 'DELETE' });
       if (res.ok) {
         if (contaSelecionadaVisualizacao === id) setContaSelecionadaVisualizacao('todas');
         buscarDados(usuarioLogado.id);
@@ -639,7 +642,7 @@ export default function App() {
     if (!usuarioLogado) return;
     if (!confirm("Tem certeza que deseja excluir?")) return;
     try {
-      const res = await fetch(`http://localhost:8000/transacoes/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/transacoes/${id}`, { method: 'DELETE' });
       if (res.ok) buscarDados(usuarioLogado.id);
     } catch (e) { console.error(e); }
   };
@@ -1552,7 +1555,7 @@ export default function App() {
                       const nomeCat = window.prompt("Digite o nome da nova categoria de saída:");
                       if (!nomeCat) return;
                       try {
-                        const res = await fetch(`http://localhost:8000/usuarios/${usuarioLogado.id}/categorias/`, {
+                        const res = await fetch(`${API_URL}/usuarios/${usuarioLogado.id}/categorias/`, {
                           method: 'POST', headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ nome: nomeCat, tipo: 'saida' })
                         });
