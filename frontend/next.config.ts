@@ -9,7 +9,8 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  /* opções de configuração aqui */
+  // Adiciona a configuração vazia do turbopack para evitar o erro de conflito
+  turbopack: {},
 };
 
 export default withPWA(nextConfig);
