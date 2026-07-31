@@ -26,7 +26,6 @@ interface Orcamento { id: number; limite: number; mes_ano: string; categoria_id:
 interface MetaEconomia { id: number; titulo: string; valor_alvo: number; valor_atual: number; data_limite?: string; usuario_id: number; }
 interface FluxoCaixaMes { mes: string; entradas: number; saidas: number; liquido: number; }
 
-// Define a URL da API dinamicamente (Vercel na nuvem ou Localhost no PC)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const CORES_GRAFICO = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -43,14 +42,10 @@ const PERGUNTAS_OPCOES = [
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState<{ id: number; nome: string; email: string } | null>(null);
   
-  // Estado das telas de autenticação
   const [telaAuth, setTelaAuth] = useState<string>('login');
   const [authErro, setAuthErro] = useState('');
-  
-  // Estado para alternar a visibilidade da senha (olhinho)
   const [mostrarSenha, setMostrarSenha] = useState(false);
   
-  // Forms de Auth
   const [authForm, setAuthForm] = useState({ 
     nome: '', email: '', senha: '',
     p1: PERGUNTAS_OPCOES[0], r1: '',
@@ -63,7 +58,6 @@ export default function App() {
   const [respostasRecuperacao, setRespostasRecuperacao] = useState({ r1: '', r2: '', r3: '' });
   const [novaSenhaRecuperacao, setNovaSenhaRecuperacao] = useState('');
 
-  // Estados dos Dados Financeiros
   const [contas, setContas] = useState<Conta[]>([]);
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -81,8 +75,10 @@ export default function App() {
   const [contaSelecionadaVisualizacao, setContaSelecionadaVisualizacao] = useState<number | 'todas'>('todas');
   const [cartaoSelecionadoVisualizacao, setCartaoSelecionadoVisualizacao] = useState<number | 'todos'>('todos');
   const [darkMode, setDarkMode] = useState(false);
+  
+  // Estado para controle do menu lateral no celular
+  const [sidebarAberta, setSidebarAberta] = useState(false);
 
-  // Modais do Painel
   const [modalTransacaoAberto, setModalTransacaoAberto] = useState(false);
   const [modalContaAberto, setModalContaAberto] = useState(false);
   const [modalCartaoAberto, setModalCartaoAberto] = useState(false);
@@ -90,16 +86,13 @@ export default function App() {
   const [modalMetaEconomiaAberto, setModalMetaEconomiaAberto] = useState(false);
   const [modalAlterarSenhaAberto, setModalAlterarSenhaAberto] = useState(false);
   
-  // Edição
   const [transacaoEditandoId, setTransacaoEditandoId] = useState<number | null>(null);
   const [metaEditandoId, setMetaEditandoId] = useState<number | null>(null);
   const [orcamentoEditandoId, setOrcamentoEditandoId] = useState<number | null>(null);
 
-  // Form Alterar Senha Logado
   const [formAlterarSenha, setFormAlterarSenha] = useState({ senha_atual: '', nova_senha: '', confirmar_senha: '' });
   const [alterarSenhaMsg, setAlterarSenhaMsg] = useState({ erro: '', sucesso: '' });
 
-  // Forms de Operação Financeira
   const [formTransacao, setFormTransacao] = useState({
     descricao: '', valor: '', tipo: 'saida', categoria_id: '', conta_id: '', cartao_id: '',
     forma_pagamento: 'debito', recorrente: false, parcelado: false, total_parcelas: '1'
@@ -176,7 +169,6 @@ export default function App() {
     if (usuarioLogado) buscarDados(usuarioLogado.id);
   }, [usuarioLogado]);
 
-  // Função para conectar via Open Finance
   const handleConectarOpenFinance = async () => {
     if (!usuarioLogado) return;
     try {
@@ -197,7 +189,6 @@ export default function App() {
     }
   };
 
-  // Handlers de Autenticação
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthErro('');
@@ -215,8 +206,6 @@ export default function App() {
         });
         if (res.ok) {
           alert("Cadastro realizado com sucesso! Faça login.");
-          
-          // LIMPEZA DOS CAMPOS E RESET DO BOTÃO DA SENHA
           setAuthForm({
             nome: '', email: '', senha: '',
             p1: PERGUNTAS_OPCOES[0], r1: '',
@@ -224,7 +213,6 @@ export default function App() {
             p3: PERGUNTAS_OPCOES[2], r3: ''
           });
           setMostrarSenha(false);
-
           setTelaAuth('login');
         } else {
           const err = await res.json();
@@ -245,8 +233,6 @@ export default function App() {
           const usuario = { id: data.usuario_id, nome: data.nome, email: authForm.email };
           setUsuarioLogado(usuario);
           localStorage.setItem('finia_usuario', JSON.stringify(usuario));
-          
-          // Limpa as credenciais ao logar
           setAuthForm(prev => ({ ...prev, senha: '' }));
           setMostrarSenha(false);
         } else {
@@ -258,7 +244,6 @@ export default function App() {
     }
   };
 
-  // Buscar as 3 perguntas de segurança cadastradas para o e-mail
   const handleBuscarPerguntas = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthErro('');
@@ -276,7 +261,6 @@ export default function App() {
     }
   };
 
-  // Validar respostas fornecidas (Exige pelo menos 2 acertos)
   const handleValidarRespostas = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthErro('');
@@ -304,7 +288,6 @@ export default function App() {
     }
   };
 
-  // Redefinir senha após validação positiva
   const handleSubmeterRedefinicao = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthErro('');
@@ -328,16 +311,13 @@ export default function App() {
     }
   };
 
-  // Alterar Senha enquanto estiver Logado
   const handleSubmeterAlterarSenhaLogado = async (e: React.FormEvent) => {
     e.preventDefault();
     setAlterarSenhaMsg({ erro: '', sucesso: '' });
-
     if (formAlterarSenha.nova_senha !== formAlterarSenha.confirmar_senha) {
       setAlterarSenhaMsg({ erro: 'A nova senha e a confirmação não coincidem.', sucesso: '' });
       return;
     }
-
     try {
       const res = await fetch(`${API_URL}/usuarios/${usuarioLogado?.id}/alterar-senha`, {
         method: 'PUT',
@@ -347,7 +327,6 @@ export default function App() {
           nova_senha: formAlterarSenha.nova_senha
         })
       });
-
       if (res.ok) {
         setAlterarSenhaMsg({ erro: '', sucesso: 'Senha alterada com sucesso!' });
         setTimeout(() => {
@@ -368,12 +347,10 @@ export default function App() {
     localStorage.removeItem('finia_usuario');
   };
 
-  // Funções Financeiras CRUD
   const handleNovaCategoria = async () => {
     if (!usuarioLogado) return;
     const nomeCategoria = window.prompt(`Digite o nome da nova categoria de ${formTransacao.tipo.toUpperCase()}:`);
     if (!nomeCategoria) return; 
-
     try {
       const res = await fetch(`${API_URL}/usuarios/${usuarioLogado.id}/categorias/`, {
         method: 'POST',
@@ -390,7 +367,6 @@ export default function App() {
   const handleSubmeterTransacao = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuarioLogado) return;
-
     const payload = {
       descricao: formTransacao.descricao,
       valor: parseFloat(formTransacao.valor.replace(',', '.')),
@@ -405,7 +381,6 @@ export default function App() {
       parcelado: (formTransacao.tipo === 'saida' && formTransacao.forma_pagamento === 'credito') ? formTransacao.parcelado : false,
       total_parcelas: (formTransacao.tipo === 'saida' && formTransacao.forma_pagamento === 'credito' && formTransacao.parcelado) ? parseInt(formTransacao.total_parcelas) : null
     };
-
     try {
       const url = transacaoEditandoId ? `${API_URL}/transacoes/${transacaoEditandoId}` : `${API_URL}/transacoes/`;
       const method = transacaoEditandoId ? 'PUT' : 'POST';
@@ -443,20 +418,7 @@ export default function App() {
       const res = await fetch(`${API_URL}/transacoes/${t.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          descricao: t.descricao,
-          valor: t.valor,
-          tipo: t.tipo,
-          data_transacao: t.data_transacao,
-          pago: !t.pago,
-          conta_id: t.conta_id,
-          categoria_id: t.categoria_id,
-          cartao_id: t.cartao_id,
-          forma_pagamento: t.forma_pagamento,
-          recorrente: t.recorrente,
-          parcelado: t.parcelado,
-          total_parcelas: t.total_parcelas
-        })
+        body: JSON.stringify({ ...t, pago: !t.pago })
       });
       if (res.ok && usuarioLogado) buscarDados(usuarioLogado.id);
     } catch (e) { console.error(e); }
@@ -465,13 +427,11 @@ export default function App() {
   const handleSubmeterConta = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuarioLogado) return;
-
     const payload = {
       nome: formConta.nome,
       instituicao: formConta.instituicao,
       saldo_inicial: parseFloat(formConta.saldo_inicial.replace(',', '.'))
     };
-
     try {
       const res = await fetch(`${API_URL}/usuarios/${usuarioLogado.id}/contas/`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -488,14 +448,12 @@ export default function App() {
   const handleSubmeterCartao = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuarioLogado) return;
-
     const payload = {
       nome: formCartao.nome,
       limite: parseFloat(formCartao.limite.replace(',', '.')),
       dia_fechamento: parseInt(formCartao.dia_fechamento),
       dia_vencimento: parseInt(formCartao.dia_vencimento)
     };
-
     try {
       const res = await fetch(`${API_URL}/usuarios/${usuarioLogado.id}/cartoes/`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -523,17 +481,14 @@ export default function App() {
   const handleSubmeterOrcamento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuarioLogado) return;
-
     const payload = {
       limite: parseFloat(formOrcamento.limite.replace(',', '.')),
       mes_ano: formOrcamento.mes_ano,
       categoria_id: parseInt(formOrcamento.categoria_id)
     };
-
     try {
       const url = orcamentoEditandoId ? `${API_URL}/orcamentos/${orcamentoEditandoId}` : `${API_URL}/usuarios/${usuarioLogado.id}/orcamentos/`;
       const method = orcamentoEditandoId ? 'PUT' : 'POST';
-
       const res = await fetch(url, {
         method, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -568,18 +523,15 @@ export default function App() {
   const handleSubmeterMetaEconomia = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuarioLogado) return;
-
     const payload = {
       titulo: formMetaEconomia.titulo,
       valor_alvo: parseFloat(formMetaEconomia.valor_alvo.replace(',', '.')),
       valor_atual: 0.0,
       data_limite: formMetaEconomia.data_limite || null
     };
-
     try {
       const url = metaEditandoId ? `${API_URL}/metas-economia/${metaEditandoId}` : `${API_URL}/usuarios/${usuarioLogado.id}/metas-economia/`;
       const method = metaEditandoId ? 'PUT' : 'POST';
-
       const res = await fetch(url, {
         method, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -616,11 +568,8 @@ export default function App() {
     if (!valorStr) return;
     const valor = parseFloat(valorStr.replace(',', '.'));
     if (isNaN(valor) || valor <= 0) return alert("Valor inválido.");
-
     try {
-      const res = await fetch(`${API_URL}/metas-economia/${metaId}/adicionar?valor=${valor}`, {
-        method: 'PUT'
-      });
+      const res = await fetch(`${API_URL}/metas-economia/${metaId}/adicionar?valor=${valor}`, { method: 'PUT' });
       if (res.ok && usuarioLogado) buscarDados(usuarioLogado.id);
     } catch (e) { console.error(e); }
   };
@@ -652,9 +601,7 @@ export default function App() {
       alert("Não há transações filtradas para exportar.");
       return;
     }
-
     let csvContent = "data:text/csv;charset=utf-8,ID,Descricao,Valor,Tipo,FormaPagamento,Data,Status\n";
-
     transacoesFiltradas.forEach(t => {
       const status = t.pago !== false ? "Pago" : "Pendente";
       const linha = [
@@ -668,7 +615,6 @@ export default function App() {
       ].join(",");
       csvContent += linha + "\n";
     });
-
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -716,20 +662,17 @@ export default function App() {
     const correspondeMes = filtroMes === 'todos' || t.data_transacao.substring(0, 7) === filtroMes;
     const correspondeTipo = filtroTipo === 'todas' || t.tipo === filtroTipo;
     const correspondeForma = filtroForma === 'todas' || t.forma_pagamento === filtroForma;
-
     return correspondeBusca && correspondeMes && correspondeTipo && correspondeForma;
   });
 
-  // TELA DE AUTENTICAÇÃO (LOGIN / CADASTRO / RECUPERAÇÃO)
   if (!usuarioLogado) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white p-4">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-lg shadow-2xl my-8">
+        <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl w-full max-w-lg shadow-2xl my-4">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-emerald-400">FinIA</h1>
             <p className="text-xs text-slate-400 mt-1">Gestão Financeira Inteligente</p>
           </div>
-
           {(telaAuth === 'login' || telaAuth === 'cadastro') && (
             <div className="flex bg-slate-800 p-1 rounded-xl mb-6">
               <button onClick={() => { setTelaAuth('login'); setAuthErro(''); setMostrarSenha(false); }} 
@@ -742,9 +685,7 @@ export default function App() {
               </button>
             </div>
           )}
-
           {authErro && <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg text-sm mb-4">{authErro}</div>}
-
           {(telaAuth === 'login' || telaAuth === 'cadastro') && (
             <form onSubmit={handleAuthSubmit} className="space-y-4">
               {telaAuth === 'cadastro' && (
@@ -768,8 +709,6 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                
-                {/* Campo de Senha com o Botão de Olhinho */}
                 <div className="relative flex items-center">
                   <input 
                     type={mostrarSenha ? "text" : "password"} 
@@ -789,12 +728,9 @@ export default function App() {
                   </button>
                 </div>
               </div>
-
-              {/* Cadastro das 3 Perguntas de Segurança */}
               {telaAuth === 'cadastro' && (
                 <div className="pt-2 border-t border-slate-800 space-y-3">
                   <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Perguntas de Segurança (para recuperação)</p>
-                  
                   <div>
                     <select value={authForm.p1} onChange={e => setAuthForm({...authForm, p1: e.target.value})} className="w-full p-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-300 mb-1">
                       {PERGUNTAS_OPCOES.map((p, idx) => <option key={idx} value={p}>{p}</option>)}
@@ -802,7 +738,6 @@ export default function App() {
                     <input type="text" required placeholder="Sua resposta (palavra-chave)" value={authForm.r1} onChange={e => setAuthForm({...authForm, r1: e.target.value})}
                       className="w-full p-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500" />
                   </div>
-
                   <div>
                     <select value={authForm.p2} onChange={e => setAuthForm({...authForm, p2: e.target.value})} className="w-full p-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-300 mb-1">
                       {PERGUNTAS_OPCOES.map((p, idx) => <option key={idx} value={p}>{p}</option>)}
@@ -810,7 +745,6 @@ export default function App() {
                     <input type="text" required placeholder="Sua resposta (palavra-chave)" value={authForm.r2} onChange={e => setAuthForm({...authForm, r2: e.target.value})}
                       className="w-full p-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500" />
                   </div>
-
                   <div>
                     <select value={authForm.p3} onChange={e => setAuthForm({...authForm, p3: e.target.value})} className="w-full p-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-300 mb-1">
                       {PERGUNTAS_OPCOES.map((p, idx) => <option key={idx} value={p}>{p}</option>)}
@@ -820,14 +754,11 @@ export default function App() {
                   </div>
                 </div>
               )}
-
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2">
                 {telaAuth === 'login' ? 'Acessar Sistema' : 'Criar Conta Gratuita'}
               </button>
             </form>
           )}
-
-          {/* Recuperação - Passo 1: Informar E-mail */}
           {telaAuth === 'esqueci_email' && (
             <form onSubmit={handleBuscarPerguntas} className="space-y-4">
               <div className="text-center mb-4">
@@ -840,40 +771,34 @@ export default function App() {
                   className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500" />
               </div>
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2">
-                Buscar Perguntas de Segurança
+                Buscar Perguntas
               </button>
               <button type="button" onClick={() => { setTelaAuth('login'); setAuthErro(''); }} className="w-full text-xs text-slate-400 hover:text-white mt-3 text-center block">
                 Voltar para o Login
               </button>
             </form>
           )}
-
-          {/* Recuperação - Passo 2: Responder Perguntas (Mínimo 2 acertos) */}
           {telaAuth === 'esqueci_perguntas' && (
             <form onSubmit={handleValidarRespostas} className="space-y-4">
               <div className="text-center mb-4">
                 <h3 className="text-lg font-semibold text-white">Validação de Segurança</h3>
                 <p className="text-xs text-slate-400 mt-1">Responda corretamente a pelo menos 2 das perguntas para redefinir sua senha.</p>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-emerald-400 mb-1">{perguntasRecuperacao.p1}</label>
                 <input type="text" required placeholder="Sua resposta" value={respostasRecuperacao.r1} onChange={e => setRespostasRecuperacao({...respostasRecuperacao, r1: e.target.value})}
                   className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500 text-sm" />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-emerald-400 mb-1">{perguntasRecuperacao.p2}</label>
                 <input type="text" required placeholder="Sua resposta" value={respostasRecuperacao.r2} onChange={e => setRespostasRecuperacao({...respostasRecuperacao, r2: e.target.value})}
                   className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500 text-sm" />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-emerald-400 mb-1">{perguntasRecuperacao.p3}</label>
                 <input type="text" required placeholder="Sua resposta" value={respostasRecuperacao.r3} onChange={e => setRespostasRecuperacao({...respostasRecuperacao, r3: e.target.value})}
                   className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500 text-sm" />
               </div>
-
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2">
                 Validar Respostas
               </button>
@@ -882,28 +807,22 @@ export default function App() {
               </button>
             </form>
           )}
-
-          {/* Recuperação - Passo 3: Digitar a Nova Senha */}
           {telaAuth === 'redefinir' && (
             <form onSubmit={handleSubmeterRedefinicao} className="space-y-4">
               <div className="text-center mb-4">
                 <h3 className="text-lg font-semibold text-emerald-400">🎉 Validação Aprovada!</h3>
                 <p className="text-xs text-slate-400 mt-1">Digite sua nova senha abaixo para salvar.</p>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Nova Senha</label>
                 <input type="password" required placeholder="••••••••" value={novaSenhaRecuperacao} onChange={e => setNovaSenhaRecuperacao(e.target.value)}
                   className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500" />
               </div>
-
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2">
                 Salvar Nova Senha
               </button>
             </form>
           )}
-
-          {/* Tela de Bloqueio caso erre as respostas */}
           {telaAuth === 'bloqueado' && (
             <div className="text-center space-y-4 py-4">
               <div className="text-red-400 text-4xl">⚠️</div>
@@ -920,26 +839,36 @@ export default function App() {
               </button>
             </div>
           )}
-
         </div>
       </div>
     );
   }
 
-  // PAINEL PRINCIPAL DO SISTEMA (USUÁRIO AUTENTICADO)
   return (
-    <div className={`flex h-screen relative transition-colors duration-200 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-slate-900'}`}>
+    <div className={`flex h-screen relative overflow-hidden transition-colors duration-200 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-slate-900'}`}>
       
-      {/* SIDEBAR LATERAL */}
-      <aside className={`w-64 flex flex-col z-10 border-r bg-slate-900 border-slate-800 text-white`}>
-        <div className="p-6 border-b border-slate-800">
-          <h1 className="text-2xl font-bold text-emerald-400">FinIA</h1>
-          <p className="text-xs text-slate-400 mt-1">Olá, {usuarioLogado.nome}</p>
+      {/* Overlay Escuro no Celular (quando o menu está aberto) */}
+      {sidebarAberta && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
+          onClick={() => setSidebarAberta(false)}
+        ></div>
+      )}
+
+      {/* SIDEBAR LATERAL (Drawer Responsivo) */}
+      <aside className={`w-64 flex flex-col z-50 border-r ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-900 border-slate-800'} text-white fixed inset-y-0 left-0 transform ${sidebarAberta ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-emerald-400">FinIA</h1>
+            <p className="text-xs text-slate-400 mt-1">Olá, {usuarioLogado.nome}</p>
+          </div>
+          {/* Botão fechar apenas visível no mobile */}
+          <button onClick={() => setSidebarAberta(false)} className="md:hidden text-slate-400 hover:text-white">✕</button>
         </div>
         
         <div className="px-4 mt-6 flex-1 overflow-y-auto">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Visão Geral</p>
-          <button onClick={() => { setContaSelecionadaVisualizacao('todas'); setCartaoSelecionadoVisualizacao('todos'); }}
+          <button onClick={() => { setContaSelecionadaVisualizacao('todas'); setCartaoSelecionadoVisualizacao('todos'); setSidebarAberta(false); }}
             className={`w-full flex items-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors mb-4 ${contaSelecionadaVisualizacao === 'todas' && cartaoSelecionadoVisualizacao === 'todos' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
             Todas as Contas
           </button>
@@ -947,7 +876,7 @@ export default function App() {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Suas Contas</p>
           <div className="space-y-1.5 mb-6">
             {contas.map(c => (
-              <button key={c.id} onClick={() => { setContaSelecionadaVisualizacao(c.id); setCartaoSelecionadoVisualizacao('todos'); }}
+              <button key={c.id} onClick={() => { setContaSelecionadaVisualizacao(c.id); setCartaoSelecionadoVisualizacao('todos'); setSidebarAberta(false); }}
                 className={`w-full flex justify-between items-center py-2 px-3 rounded-lg text-xs font-medium transition-colors ${contaSelecionadaVisualizacao === c.id ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-300 hover:bg-slate-800'}`}>
                 <span>{c.nome}</span>
               </button>
@@ -963,7 +892,7 @@ export default function App() {
               const limiteDisponivel = card.limite - gastoCartao;
 
               return (
-                <div key={card.id} onClick={() => setCartaoSelecionadoVisualizacao(card.id)}
+                <div key={card.id} onClick={() => { setCartaoSelecionadoVisualizacao(card.id); setSidebarAberta(false); }}
                      className={`p-3 rounded-xl border cursor-pointer transition-colors ${cartaoSelecionadoVisualizacao === card.id ? 'bg-purple-900/30 border-purple-500/50 text-white' : 'bg-slate-800/40 border-slate-700/60 text-slate-300 hover:bg-slate-800'}`}>
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-semibold text-xs">{card.nome}</span>
@@ -976,14 +905,14 @@ export default function App() {
                 </div>
               );
             })}
-            <button onClick={() => setModalCartaoAberto(true)} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-xs font-semibold border border-slate-700">
+            <button onClick={() => { setModalCartaoAberto(true); setSidebarAberta(false); }} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-xs font-semibold border border-slate-700">
               + Novo Cartão
             </button>
           </div>
 
           <div className="mt-6 mb-4">
             <button onClick={handleConectarOpenFinance} className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-md flex items-center justify-center gap-2">
-              🔗 Conectar Banco (Open Finance)
+              🔗 Conectar Banco
             </button>
           </div>
         </div>
@@ -993,7 +922,7 @@ export default function App() {
             {darkMode ? "☀️ Modo Claro" : "🌙 Modo Escuro"}
           </button>
           
-          <button onClick={() => { setAlterarSenhaMsg({ erro: '', sucesso: '' }); setModalAlterarSenhaAberto(true); }} className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium">
+          <button onClick={() => { setAlterarSenhaMsg({ erro: '', sucesso: '' }); setModalAlterarSenhaAberto(true); setSidebarAberta(false); }} className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium">
             ⚙️ Alterar Senha
           </button>
 
@@ -1004,30 +933,39 @@ export default function App() {
       </aside>
 
       {/* ÁREA PRINCIPAL / DASHBOARD */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <header className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-              {cartaoSelecionadoVisualizacao !== 'todos' 
-                ? `Fatura: ${cartoes.find(c => c.id === cartaoSelecionadoVisualizacao)?.nome}`
-                : (contaSelecionadaVisualizacao === 'todas' ? 'Visão Geral' : contas.find(c => c.id === contaSelecionadaVisualizacao)?.nome)}
-            </h2>
-            <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Acompanhe suas finanças, orçamentos e cartões de crédito.</p>
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto relative w-full">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 md:mb-8 gap-4">
+          <div className="flex items-center gap-3">
+            {/* Botão de Menu Hambúrguer (Mobile) */}
+            <button 
+              className={`md:hidden p-2.5 rounded-lg border flex items-center justify-center ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-800 shadow-sm'}`}
+              onClick={() => setSidebarAberta(true)}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <div>
+              <h2 className={`text-2xl md:text-3xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                {cartaoSelecionadoVisualizacao !== 'todos' 
+                  ? `Fatura: ${cartoes.find(c => c.id === cartaoSelecionadoVisualizacao)?.nome}`
+                  : (contaSelecionadaVisualizacao === 'todas' ? 'Visão Geral' : contas.find(c => c.id === contaSelecionadaVisualizacao)?.nome)}
+              </h2>
+              <p className={`text-xs md:text-sm mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Acompanhe suas finanças e cartões.</p>
+            </div>
           </div>
           
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
             <button onClick={() => {
               setMetaEditandoId(null);
               setFormMetaEconomia({ titulo: '', valor_alvo: '', data_limite: '' });
               setModalMetaEconomiaAberto(true);
-            }} className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-lg font-medium shadow-sm text-sm">
+            }} className="flex-1 lg:flex-none justify-center bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 px-3 py-2.5 rounded-lg font-medium shadow-sm text-sm whitespace-nowrap">
               🏆 Metas
             </button>
             <button onClick={() => {
               setOrcamentoEditandoId(null);
               setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7) });
               setModalOrcamentoAberto(true);
-            }} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-3 py-2 rounded-lg font-medium shadow-sm text-sm">
+            }} className="flex-1 lg:flex-none justify-center bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-3 py-2.5 rounded-lg font-medium shadow-sm text-sm whitespace-nowrap">
               🎯 Orçamento
             </button>
             <button onClick={() => {
@@ -1041,39 +979,39 @@ export default function App() {
                   recorrente: false, parcelado: false, total_parcelas: '1'
                 });
                 setModalTransacaoAberto(true);
-              }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm text-sm">
+              }} className="w-full lg:w-auto justify-center bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm text-sm">
               + Transação
             </button>
           </div>
         </header>
 
         {/* CARDS RESUMO DE VALORES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className={`p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+          <div className={`p-5 md:p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <h3 className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Saldo Atual</h3>
-            <p className={`text-3xl font-bold mt-2 ${saldoAtualVisivel >= 0 ? (darkMode ? 'text-white' : 'text-slate-800') : 'text-red-500'}`}>
+            <p className={`text-2xl md:text-3xl font-bold mt-2 truncate ${saldoAtualVisivel >= 0 ? (darkMode ? 'text-white' : 'text-slate-800') : 'text-red-500'}`}>
               {carregando ? "..." : formatarMoeda(saldoAtualVisivel)}
             </p>
           </div>
-          <div className={`p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <div className={`p-5 md:p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <h3 className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Entradas</h3>
-            <p className="text-3xl font-bold text-emerald-500 mt-2">{carregando ? "..." : `+ ${formatarMoeda(entradasVisiveis)}`}</p>
+            <p className="text-2xl md:text-3xl font-bold text-emerald-500 mt-2 truncate">{carregando ? "..." : `+ ${formatarMoeda(entradasVisiveis)}`}</p>
           </div>
-          <div className={`p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <div className={`p-5 md:p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <h3 className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Saídas</h3>
-            <p className="text-3xl font-bold text-red-500 mt-2">{carregando ? "..." : `- ${formatarMoeda(saidasVisiveis)}`}</p>
+            <p className="text-2xl md:text-3xl font-bold text-red-500 mt-2 truncate">{carregando ? "..." : `- ${formatarMoeda(saidasVisiveis)}`}</p>
           </div>
         </div>
 
         {/* METAS DE ECONOMIA */}
-        <div className={`p-6 rounded-xl shadow-sm border mb-8 ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-          <div className="flex justify-between items-center mb-4">
+        <div className={`p-5 md:p-6 rounded-xl shadow-sm border mb-8 ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
             <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Metas de Economia & Reserva</h3>
             <button onClick={() => {
               setMetaEditandoId(null);
               setFormMetaEconomia({ titulo: '', valor_alvo: '', data_limite: '' });
               setModalMetaEconomiaAberto(true);
-            }} className="text-xs bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-lg">
+            }} className="text-xs w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg">
               + Nova Meta
             </button>
           </div>
@@ -1081,7 +1019,7 @@ export default function App() {
           {metasEconomia.length === 0 ? (
             <p className="text-slate-400 text-sm py-4 text-center">Nenhuma meta de economia criada ainda.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {metasEconomia.map(meta => {
                 const porcentagem = Math.min(Math.round((meta.valor_atual / meta.valor_alvo) * 100), 100);
                 const concluida = meta.valor_atual >= meta.valor_alvo;
@@ -1107,7 +1045,7 @@ export default function App() {
 
                     <div className="flex justify-between items-center mt-2">
                       <span className="text-[11px] text-slate-400">{concluida ? '🎉 Meta Alcançada!' : (meta.data_limite ? `Prazo: ${formatarData(meta.data_limite)}` : 'Sem prazo')}</span>
-                      <button onClick={() => handleDepositarMeta(meta.id)} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-md font-medium">
+                      <button onClick={() => handleDepositarMeta(meta.id)} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-md font-medium">
                         + Depositar
                       </button>
                     </div>
@@ -1119,14 +1057,14 @@ export default function App() {
         </div>
 
         {/* ORÇAMENTO / TETO DE GASTOS */}
-        <div className={`p-6 rounded-xl shadow-sm border mb-8 ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Orçamento por Categoria (Teto de Gastos)</h3>
+        <div className={`p-5 md:p-6 rounded-xl shadow-sm border mb-8 ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Orçamento por Categoria</h3>
             <button onClick={() => {
               setOrcamentoEditandoId(null);
               setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7) });
               setModalOrcamentoAberto(true);
-            }} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg">
+            }} className="text-xs w-full sm:w-auto text-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg">
               + Novo Teto
             </button>
           </div>
@@ -1150,7 +1088,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold text-sm">{cat ? cat.nome : 'Categoria'}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400">{formatarMoeda(gastoCategoria)} / {formatarMoeda(orc.limite)}</span>
+                        <span className="text-[10px] sm:text-xs text-slate-400">{formatarMoeda(gastoCategoria)} / {formatarMoeda(orc.limite)}</span>
                         <button onClick={() => abrirEdicaoOrcamento(orc)} className="text-slate-400 hover:text-blue-400 text-xs" title="Editar Orçamento">✎</button>
                         <button onClick={() => handleExcluirOrcamento(orc.id)} className="text-slate-400 hover:text-red-400 text-xs" title="Excluir Orçamento">✕</button>
                       </div>
@@ -1160,7 +1098,7 @@ export default function App() {
                       <div className={`h-full transition-all duration-500 ${estourou ? 'bg-red-500' : porcentagem > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
                            style={{ width: `${porcentagem}%` }}></div>
                     </div>
-                    <div className="flex justify-between items-center mt-2 text-[11px]">
+                    <div className="flex justify-between items-center mt-2 text-[10px] sm:text-[11px]">
                       <span className={estourou ? 'text-red-400 font-bold' : 'text-slate-400'}>
                         {estourou ? '⚠️ Orçamento estourado!' : `${porcentagem}% utilizado`}
                       </span>
@@ -1174,16 +1112,16 @@ export default function App() {
         </div>
 
         {/* GRÁFICO DE GASTOS */}
-        <div className={`p-6 rounded-xl shadow-sm border mb-8 flex flex-col items-center ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-          <h3 className={`text-lg font-semibold mb-2 w-full text-left ${darkMode ? 'text-white' : 'text-slate-800'}`}>Distribuição de Gastos por Categoria</h3>
+        <div className={`p-5 md:p-6 rounded-xl shadow-sm border mb-8 flex flex-col items-center ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <h3 className={`text-lg font-semibold mb-2 w-full text-left ${darkMode ? 'text-white' : 'text-slate-800'}`}>Distribuição de Gastos</h3>
           
           {dadosGrafico.length === 0 ? (
             <p className="text-slate-400 text-sm py-12">Nenhum gasto registrado.</p>
           ) : (
-            <div className="w-full h-64">
+            <div className="w-full h-48 md:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dadosGrafico} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}>
+                  <Pie data={dadosGrafico} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}>
                     {dadosGrafico.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={CORES_GRAFICO[index % CORES_GRAFICO.length]} />
                     ))}
@@ -1196,21 +1134,21 @@ export default function App() {
         </div>
 
         {/* TABELAS DE EXTRATO E CONTAS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className={`p-6 rounded-xl shadow-sm border h-[480px] flex flex-col ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
+          <div className={`p-5 md:p-6 rounded-xl shadow-sm border h-[500px] flex flex-col ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Últimas Transações</h3>
-              <button onClick={exportarParaCSV} className="text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 font-bold px-3 py-1.5 rounded-lg">
-                📥 Exportar CSV
+              <button onClick={exportarParaCSV} className="text-[10px] md:text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 font-bold px-2 py-1.5 rounded-lg">
+                📥 Exportar
               </button>
             </div>
 
             <div className="flex flex-col gap-2 mb-4">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input type="text" placeholder="Pesquisar descrição..." value={busca} onChange={e => setBusca(e.target.value)}
                   className={`flex-1 p-2 text-sm border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
                 <input type="month" value={filtroMes === 'todos' ? '' : filtroMes} onChange={e => setFiltroMes(e.target.value ? e.target.value : 'todos')}
-                  className={`p-2 text-sm border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+                  className={`p-2 text-sm border rounded-lg outline-none w-full sm:w-auto ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
 
               <div className="flex gap-2 text-xs">
@@ -1233,7 +1171,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 overflow-y-auto pr-1">
               {transacoesFiltradas.length === 0 ? (
                 <p className="text-slate-400 text-sm text-center mt-10">Nenhuma transação encontrada.</p>
               ) : (
@@ -1241,23 +1179,23 @@ export default function App() {
                   {transacoesFiltradas.map((t) => {
                     const cartaoTransacao = cartoes.find(c => c.id === t.cartao_id);
                     return (
-                      <li key={t.id} className={`flex justify-between items-center p-3 rounded-lg border-b last:border-0 ${darkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-slate-100 hover:bg-slate-50'}`}>
+                      <li key={t.id} className={`flex flex-col sm:flex-row justify-between sm:items-center p-3 rounded-lg border-b last:border-0 gap-3 ${darkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-slate-100 hover:bg-slate-50'}`}>
                         <div className="flex items-center gap-3">
-                          <div className={`w-2 h-10 rounded-full ${t.tipo === 'entrada' ? 'bg-emerald-400' : 'bg-red-400'}`}></div>
+                          <div className={`w-1.5 h-10 rounded-full ${t.tipo === 'entrada' ? 'bg-emerald-400' : 'bg-red-400'}`}></div>
                           <div>
-                            <p className={`font-medium ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t.descricao}</p>
-                            <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                            <p className={`font-medium text-sm md:text-base ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{t.descricao}</p>
+                            <div className="text-[10px] md:text-xs text-slate-400 flex flex-wrap items-center gap-1.5 mt-0.5">
                               <span>{formatarData(t.data_transacao)}</span>
-                              <span className="bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded text-[10px] uppercase font-semibold">
+                              <span className="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded uppercase font-semibold">
                                 {t.forma_pagamento || 'debito'} {cartaoTransacao ? `(${cartaoTransacao.nome})` : ''}
                               </span>
-                              {t.recorrente && <span className="bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded text-[10px]">Recorrente</span>}
-                            </p>
+                              {t.recorrente && <span className="bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded">Recorrente</span>}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className={`font-bold ${t.tipo === 'entrada' ? 'text-emerald-500' : 'text-slate-400'}`}>
+                        <div className="flex items-center justify-between sm:justify-end gap-3 pl-4 sm:pl-0">
+                          <div className="text-left sm:text-right">
+                            <p className={`font-bold text-sm md:text-base ${t.tipo === 'entrada' ? 'text-emerald-500' : 'text-slate-400'}`}>
                               {t.tipo === 'entrada' ? '+' : '-'} {formatarMoeda(t.valor)}
                             </p>
                             <button 
@@ -1271,8 +1209,10 @@ export default function App() {
                               {t.pago !== false ? 'Pago' : 'Pendente'}
                             </button>
                           </div>
-                          <button onClick={() => abrirEdicaoTransacao(t)} className="text-slate-400 hover:text-blue-400 p-1">✎</button>
-                          <button onClick={() => handleExcluirTransacao(t.id)} className="text-slate-400 hover:text-red-400 p-1">✕</button>
+                          <div className="flex">
+                            <button onClick={() => abrirEdicaoTransacao(t)} className="text-slate-400 hover:text-blue-400 p-1 md:p-2 text-sm">✎</button>
+                            <button onClick={() => handleExcluirTransacao(t.id)} className="text-slate-400 hover:text-red-400 p-1 md:p-2 text-sm">✕</button>
+                          </div>
                         </div>
                       </li>
                     );
@@ -1282,15 +1222,15 @@ export default function App() {
             </div>
           </div>
           
-          <div className={`p-6 rounded-xl shadow-sm border h-[480px] flex flex-col ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+          <div className={`p-5 md:p-6 rounded-xl shadow-sm border h-[400px] md:h-[500px] flex flex-col ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Minhas Contas</h3>
-              <button onClick={() => setModalContaAberto(true)} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg">
+              <button onClick={() => setModalContaAberto(true)} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-lg">
                 + Nova Conta
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 overflow-y-auto pr-1">
               <ul className="space-y-3">
                 {contas.map((c) => (
                   <li key={c.id} onClick={() => { setContaSelecionadaVisualizacao(c.id); setCartaoSelecionadoVisualizacao('todos'); }}
@@ -1301,11 +1241,11 @@ export default function App() {
                       }`}
                   >
                     <div>
-                      <p className={`font-semibold ${darkMode ? 'text-white' : 'text-slate-700'}`}>{c.nome}</p>
-                      <p className="text-xs text-slate-400">{c.instituicao}</p>
+                      <p className={`font-semibold text-sm md:text-base ${darkMode ? 'text-white' : 'text-slate-700'}`}>{c.nome}</p>
+                      <p className="text-[11px] md:text-xs text-slate-400">{c.instituicao}</p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <button onClick={(e) => handleExcluirConta(e, c.id)} className="text-slate-400 hover:text-red-500 p-1">✕</button>
+                      <button onClick={(e) => handleExcluirConta(e, c.id)} className="text-slate-400 hover:text-red-500 p-2 text-sm md:text-base">✕</button>
                     </div>
                   </li>
                 ))}
@@ -1315,18 +1255,16 @@ export default function App() {
         </div>
       </main>
 
-      {/* MODAL ALTERAR SENHA (LOGADO) */}
+      {/* MODAL ALTERAR SENHA */}
       {modalAlterarSenhaAberto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">⚙️ Alterar Senha</h3>
               <button onClick={() => setModalAlterarSenhaAberto(false)} className="text-slate-400 hover:text-red-500 font-bold text-xl">&times;</button>
             </div>
-
             {alterarSenhaMsg.erro && <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg text-sm mb-4">{alterarSenhaMsg.erro}</div>}
             {alterarSenhaMsg.sucesso && <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-lg text-sm mb-4">{alterarSenhaMsg.sucesso}</div>}
-
             <form onSubmit={handleSubmeterAlterarSenhaLogado} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Senha Atual</label>
@@ -1343,31 +1281,29 @@ export default function App() {
                 <input type="password" required placeholder="••••••••" value={formAlterarSenha.confirmar_senha} onChange={e => setFormAlterarSenha({...formAlterarSenha, confirmar_senha: e.target.value})}
                   className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-4">
-                Atualizar Senha
-              </button>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-4">Atualizar Senha</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAIS DIVERSAS (TRANSAÇÃO, CONTA, CARTÃO, ORÇAMENTO, METAS) */}
+      {/* MODAL TRANSAÇÃO */}
       {modalTransacaoAberto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+          <div className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+            <div className="flex justify-between items-center mb-5">
               <h3 className="text-xl font-bold">{transacaoEditandoId ? "Editar Transação" : "Nova Transação"}</h3>
-              <button onClick={() => setModalTransacaoAberto(false)} className="text-slate-400 hover:text-red-500 font-bold text-xl">&times;</button>
+              <button onClick={() => setModalTransacaoAberto(false)} className="text-slate-400 hover:text-red-500 font-bold text-2xl leading-none">&times;</button>
             </div>
             <form onSubmit={handleSubmeterTransacao} className="space-y-4">
-              <div className="flex gap-4 mb-4">
-                <label className={`flex-1 flex items-center gap-2 p-3 rounded-lg border cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex flex-col sm:flex-row gap-3 mb-2">
+                <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                   <input type="radio" name="tipo" value="saida" checked={formTransacao.tipo === 'saida'} onChange={e => setFormTransacao({...formTransacao, tipo: e.target.value, forma_pagamento: 'debito'})} className="accent-red-500"/>
-                  <span>Saída</span>
+                  <span className="font-medium text-sm">Saída</span>
                 </label>
-                <label className={`flex-1 flex items-center gap-2 p-3 rounded-lg border cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                   <input type="radio" name="tipo" value="entrada" checked={formTransacao.tipo === 'entrada'} onChange={e => setFormTransacao({...formTransacao, tipo: e.target.value, forma_pagamento: 'pix'})} className="accent-emerald-500"/>
-                  <span>Entrada</span>
+                  <span className="font-medium text-sm">Entrada</span>
                 </label>
               </div>
 
@@ -1376,7 +1312,7 @@ export default function App() {
                   {formTransacao.tipo === 'entrada' ? 'Forma de Recebimento' : 'Forma de Pagamento'}
                 </label>
                 <select value={formTransacao.forma_pagamento} onChange={e => setFormTransacao({...formTransacao, forma_pagamento: e.target.value})}
-                  className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
+                  className={`w-full p-2.5 border rounded-lg outline-none text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
                   {formTransacao.tipo === 'entrada' ? (
                     <>
                       <option value="pix">PIX / Transferência</option>
@@ -1400,7 +1336,7 @@ export default function App() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Cartão de Crédito</label>
                   <select required value={formTransacao.cartao_id} onChange={e => setFormTransacao({...formTransacao, cartao_id: e.target.value})}
-                    className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
+                    className={`w-full p-2.5 border rounded-lg outline-none text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
                     <option value="" disabled>Selecione o cartão...</option>
                     {cartoes.map(card => <option key={card.id} value={card.id}>{card.nome}</option>)}
                   </select>
@@ -1410,12 +1346,12 @@ export default function App() {
               <div>
                 <label className="block text-sm font-medium mb-1">Descrição</label>
                 <input type="text" required placeholder="Ex: Mercado" value={formTransacao.descricao} onChange={e => setFormTransacao({...formTransacao, descricao: e.target.value})}
-                  className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+                  className={`w-full p-2.5 border rounded-lg outline-none text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Valor (R$)</label>
                 <input type="number" step="0.01" required placeholder="0.00" value={formTransacao.valor} onChange={e => setFormTransacao({...formTransacao, valor: e.target.value})}
-                  className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
+                  className={`w-full p-2.5 border rounded-lg outline-none text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
 
               {formTransacao.tipo === 'saida' && formTransacao.forma_pagamento === 'credito' && (
@@ -1436,7 +1372,6 @@ export default function App() {
                       </label>
                     </div>
                   </div>
-
                   {formTransacao.parcelado && (
                     <div>
                       <label className="block text-xs font-medium mb-1">Número de Parcelas</label>
@@ -1447,11 +1382,11 @@ export default function App() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Conta Vinculada</label>
                   <select required value={formTransacao.conta_id} onChange={e => setFormTransacao({...formTransacao, conta_id: e.target.value})}
-                    className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
+                    className={`w-full p-2.5 border rounded-lg outline-none text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
                     <option value="" disabled>Selecione...</option>
                     {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
@@ -1462,20 +1397,21 @@ export default function App() {
                     <button type="button" onClick={handleNovaCategoria} className="text-xs text-emerald-500 hover:underline">+ Nova</button>
                   </div>
                   <select required value={formTransacao.categoria_id} onChange={e => setFormTransacao({...formTransacao, categoria_id: e.target.value})}
-                    className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
+                    className={`w-full p-2.5 border rounded-lg outline-none text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}>
                     <option value="" disabled>Selecione...</option>
                     {categoriasFiltradas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
               </div>
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-4">Salvar</button>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2">Salvar Transação</button>
             </form>
           </div>
         </div>
       )}
 
+      {/* MODAL CONTA */}
       {modalContaAberto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">Nova Conta</h3>
@@ -1493,7 +1429,7 @@ export default function App() {
                   className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Saldo Inicial</label>
+                <label className="block text-sm font-medium mb-1">Saldo Inicial (R$)</label>
                 <input type="number" step="0.01" required placeholder="0.00" value={formConta.saldo_inicial} onChange={e => setFormConta({...formConta, saldo_inicial: e.target.value})}
                   className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
@@ -1503,8 +1439,9 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL CARTÃO */}
       {modalCartaoAberto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">Novo Cartão de Crédito</h3>
@@ -1521,7 +1458,7 @@ export default function App() {
                 <input type="number" step="0.01" required placeholder="Ex: 5000.00" value={formCartao.limite} onChange={e => setFormCartao({...formCartao, limite: e.target.value})}
                   className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Dia Fechamento</label>
                   <input type="number" min="1" max="31" required value={formCartao.dia_fechamento} onChange={e => setFormCartao({...formCartao, dia_fechamento: e.target.value})}
@@ -1539,8 +1476,9 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL ORÇAMENTO */}
       {modalOrcamentoAberto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">{orcamentoEditandoId ? "Editar Orçamento" : "Definir Orçamento de Gastos"}</h3>
@@ -1590,8 +1528,9 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL METAS */}
       {modalMetaEconomiaAberto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">{metaEditandoId ? "Editar Meta de Economia" : "Nova Meta de Economia"}</h3>
