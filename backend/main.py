@@ -30,7 +30,7 @@ app = FastAPI(
 # Libera a comunicação entre o frontend (Next.js na porta 3000) e o backend (FastAPI na porta 8000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # Endereço exato do nosso frontend
+    allow_origins=["*"], # Endereço exato do nosso frontend
     allow_credentials=True,
     allow_methods=["*"], # Permite todos os métodos (GET, POST, etc.)
     allow_headers=["*"], # Permite todos os cabeçalhos
