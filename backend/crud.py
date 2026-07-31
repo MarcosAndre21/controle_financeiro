@@ -6,7 +6,6 @@ import schemas
 # ==========================================
 # OPERAÇÕES DE USUÁRIO
 # ==========================================
-# backend/crud.py
 def criar_usuario(db: Session, usuario: schemas.UsuarioCreate):
     db_usuario = models.Usuario(
         nome=usuario.nome,
@@ -59,20 +58,19 @@ def get_categorias(db: Session, usuario_id: int):
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 def criar_transacao(db: Session, transacao: schemas.TransacaoCreate, usuario_id: int):
-    # Se for parcelado e tiver total de parcelas, gera os registros futuros
     if transacao.parcelado and transacao.total_parcelas and transacao.total_parcelas > 1:
         data_base = datetime.fromisoformat(transacao.data_transacao.replace('Z', '+00:00'))
         
         primeira_transacao = None
         for i in range(1, transacao.total_parcelas + 1):
             nova_data = data_base + relativedelta(months=(i - 1))
-            nova_data_str = nova_data.isoformat()  # <--- COLODE ESTA LINHA AQUI
+            nova_data_str = nova_data.isoformat()
             
             db_t = models.Transacao(
                 descricao=f"{transacao.descricao} ({i}/{transacao.total_parcelas})",
                 valor=transacao.valor,
                 tipo=transacao.tipo,
-                data_transacao=nova_data_str,  # <--- E UTILIZA A STRING AQUI
+                data_transacao=nova_data_str,
                 pago=transacao.pago if i == 1 else False,
                 recorrente=False,
                 parcelado=True,
@@ -95,9 +93,7 @@ def criar_transacao(db: Session, transacao: schemas.TransacaoCreate, usuario_id:
         return db_transacao
 
 def get_transacoes_da_conta(db: Session, conta_id: int):
-    # Executa a verificação de recorrência antes de retornar
     verificar_e_gerar_recorrencias(db, conta_id)
-    
     return db.query(models.Transacao).filter(models.Transacao.conta_id == conta_id).all()
 
 def deletar_transacao(db: Session, transacao_id: int):
@@ -107,6 +103,7 @@ def deletar_transacao(db: Session, transacao_id: int):
         db.commit()
         return True
     return False
+
 def atualizar_transacao(db: Session, transacao_id: int, dados_transacao: schemas.TransacaoCreate):
     transacao = db.query(models.Transacao).filter(models.Transacao.id == transacao_id).first()
     if transacao:
@@ -118,19 +115,20 @@ def atualizar_transacao(db: Session, transacao_id: int, dados_transacao: schemas
         db.refresh(transacao)
         return transacao
     return None
+
 def deletar_conta(db: Session, conta_id: int):
     conta = db.query(models.Conta).filter(models.Conta.id == conta_id).first()
     if conta:
-        # Opcional: Se quiser apagar também as transações vinculadas a essa conta, 
-        # o SQLAlchemy pode lidar com isso ou podemos deletar manualmente:
         db.query(models.Transacao).filter(models.Transacao.conta_id == conta_id).delete()
         db.delete(conta)
         db.commit()
         return True
     return False
 
+# ==========================================
+# OPERAÇÕES DE ORÇAMENTO (Atualizadas com Reserva de Saldo)
+# ==========================================
 def criar_ou_atualizar_orcamento(db: Session, orcamento: schemas.OrcamentoCreate, usuario_id: int):
-    # Verifica se já existe um orçamento para essa categoria nesse mês
     db_orcamento = db.query(models.Orcamento).filter(
         models.Orcamento.usuario_id == usuario_id,
         models.Orcamento.categoria_id == orcamento.categoria_id,
@@ -139,6 +137,8 @@ def criar_ou_atualizar_orcamento(db: Session, orcamento: schemas.OrcamentoCreate
 
     if db_orcamento:
         db_orcamento.limite = orcamento.limite
+        db_orcamento.reservar_saldo = orcamento.reservar_saldo if orcamento.reservar_saldo is not None else db_orcamento.reservar_saldo
+        db_orcamento.valor_reservado = orcamento.valor_reservado if orcamento.valor_reservado is not None else db_orcamento.valor_reservado
         db.commit()
         db.refresh(db_orcamento)
         return db_orcamento
@@ -146,6 +146,8 @@ def criar_ou_atualizar_orcamento(db: Session, orcamento: schemas.OrcamentoCreate
     novo_orcamento = models.Orcamento(
         limite=orcamento.limite,
         mes_ano=orcamento.mes_ano,
+        reservar_saldo=orcamento.reservar_saldo or False,
+        valor_reservado=orcamento.valor_reservado or 0.0,
         categoria_id=orcamento.categoria_id,
         usuario_id=usuario_id
     )
@@ -156,6 +158,10 @@ def criar_ou_atualizar_orcamento(db: Session, orcamento: schemas.OrcamentoCreate
 
 def get_orcamentos_usuario(db: Session, usuario_id: int):
     return db.query(models.Orcamento).filter(models.Orcamento.usuario_id == usuario_id).all()
+
+# ==========================================
+# OPERAÇÕES DE CATEGORIA & METAS
+# ==========================================
 def criar_categoria_usuario(db: Session, categoria: schemas.CategoriaCreate, usuario_id: int):
     db_categoria = models.Categoria(
         nome=categoria.nome,
@@ -209,7 +215,6 @@ def deletar_meta_economia(db: Session, meta_id: int):
     return meta
 
 def verificar_e_gerar_recorrencias(db: Session, conta_id: int):
-    # Pega todas as transações da conta que são recorrentes
     recorrentes = db.query(models.Transacao).filter(
         models.Transacao.conta_id == conta_id,
         models.Transacao.recorrente == True
@@ -221,16 +226,13 @@ def verificar_e_gerar_recorrencias(db: Session, conta_id: int):
         data_rec = datetime.fromisoformat(rec.data_transacao.replace('Z', '+00:00'))
         mes_rec_str = data_rec.strftime("%Y-%m")
 
-        # Se a transação recorrente é de um mês anterior ao atual, verificamos se já existe cópia neste mês
         if mes_rec_str < mes_atual_str:
-            # Procura se já existe uma transação com a mesma descrição e data no mês atual
             existe_no_mes_atual = db.query(models.Transacao).filter(
                 models.Transacao.conta_id == conta_id,
                 models.Transacao.descricao == rec.descricao,
                 models.Transacao.data_transacao.like(f"{mes_atual_str}%")
             ).first()
 
-            # Se ainda não existe, cria a despesa/receita para o mês atual
             if not existe_no_mes_atual:
                 nova_data = data_rec.replace(year=datetime.now().year, month=datetime.now().month)
                 
@@ -239,7 +241,7 @@ def verificar_e_gerar_recorrencias(db: Session, conta_id: int):
                     valor=rec.valor,
                     tipo=rec.tipo,
                     data_transacao=nova_data.isoformat(),
-                    pago=False,  # Contas recorrentes futuras entram pendentes até você pagar/confirmar
+                    pago=False,
                     recorrente=True,
                     parcelado=False,
                     conta_id=rec.conta_id,

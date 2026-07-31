@@ -84,6 +84,11 @@ class Orcamento(Base):
     id = Column(Integer, primary_key=True, index=True)
     limite = Column(Float, nullable=False)
     mes_ano = Column(String, nullable=False)
+    
+    # Novos campos para controle de saldo reservado
+    reservar_saldo = Column(Boolean, default=False)
+    valor_reservado = Column(Float, default=0.0)
+
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"))
     categoria_id = Column(Integer, ForeignKey("categorias.id", ondelete="CASCADE"))
 
@@ -125,7 +130,3 @@ class ItemBancario(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"))
 
     usuario = relationship("Usuario", back_populates="itens_bancarios")
-
-
-
-  

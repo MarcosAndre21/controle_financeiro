@@ -1,10 +1,8 @@
 # Arquivo: backend/schemas.py
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 from enum import Enum
-from datetime import datetime
-from typing import Optional, Union
 
 class TipoTransacao(str, Enum):
     ENTRADA = "entrada"
@@ -26,25 +24,59 @@ class ContaResponse(ContaBase):
     usuario_id: int
 
     class Config:
-        from_attributes = True # Permite ler dados do SQLAlchemy
+        from_attributes = True
 
 # ==========================================
-# SCHEMAS DE USUÁRIOS
+# SCHEMAS DE USUÁRIOS E AUTENTICAÇÃO
 # ==========================================
 class UsuarioBase(BaseModel):
     nome: str
-    email: EmailStr # Valida automaticamente se tem formato de e-mail
+    email: EmailStr
 
-class UsuarioCreate(UsuarioBase):
+class UsuarioCreate(BaseModel):
+    nome: str
+    email: str
     senha: str
+    p1: str
+    r1: str
+    p2: str
+    r2: str
+    p3: str
+    r3: str
 
-class UsuarioResponse(UsuarioBase):
+class UsuarioResponse(BaseModel):
     id: int
-    data_criacao: datetime
-    contas: List[ContaResponse] = [] # Traz as contas vinculadas ao usuário
+    nome: str
+    email: str
+    data_criacao: Optional[datetime] = None
+    contas: List[ContaResponse] = []
 
     class Config:
         from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    usuario_id: int
+    nome: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    senha: str
+
+class ValidarPerguntasRequest(BaseModel):
+    email: str
+    r1: str
+    r2: str
+    r3: str
+
+class RedefinirSenhaRequest(BaseModel):
+    email: str
+    nova_senha: str
+
+class AlterarSenhaLogadoRequest(BaseModel):
+    senha_atual: str
+    nova_senha: str
 
 # ==========================================
 # SCHEMAS DE CATEGORIAS
@@ -64,56 +96,21 @@ class CategoriaResponse(CategoriaBase):
         from_attributes = True
 
 # ==========================================
-# SCHEMAS DE TRANSAÇÕES
+# SCHEMAS DE ORÇAMENTOS (Atualizados com Reserva de Saldo)
 # ==========================================
-class TransacaoBase(BaseModel):
-    descricao: str
-    valor: float
-    tipo: TipoTransacao
-    data_transacao: datetime
-    pago: bool = True
-    conta_id: int
-    categoria_id: int
-
-class TransacaoCreate(TransacaoBase):
-    pass
-
-class TransacaoResponse(TransacaoBase):
-    id: int
-    data_criacao: datetime
-
-    class Config:
-        from_attributes = True
-
-from pydantic import BaseModel, EmailStr
-
-class UsuarioCreate(BaseModel):
-    nome: str
-    email: EmailStr
-    senha: str
-
-class UsuarioResponse(BaseModel):
-    id: int
-    nome: str
-    email: str
-
-    class Config:
-        from_attributes = True
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    usuario_id: int
-    nome: str
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    senha: str
-
 class OrcamentoCreate(BaseModel):
     limite: float
     mes_ano: str
     categoria_id: int
+    reservar_saldo: Optional[bool] = False
+    valor_reservado: Optional[float] = 0.0
+
+class OrcamentoUpdate(BaseModel):
+    limite: Optional[float] = None
+    mes_ano: Optional[str] = None
+    categoria_id: Optional[int] = None
+    reservar_saldo: Optional[bool] = None
+    valor_reservado: Optional[float] = None
 
 class OrcamentoResponse(BaseModel):
     id: int
@@ -121,10 +118,15 @@ class OrcamentoResponse(BaseModel):
     mes_ano: str
     categoria_id: int
     usuario_id: int
+    reservar_saldo: Optional[bool] = False
+    valor_reservado: Optional[float] = 0.0
 
     class Config:
         from_attributes = True
 
+# ==========================================
+# SCHEMAS DE METAS DE ECONOMIA
+# ==========================================
 class MetaEconomiaCreate(BaseModel):
     titulo: str
     valor_alvo: float
@@ -142,6 +144,9 @@ class MetaEconomiaResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# ==========================================
+# SCHEMAS DE TRANSAÇÕES
+# ==========================================
 class TransacaoCreate(BaseModel):
     descricao: str
     valor: float
@@ -150,28 +155,24 @@ class TransacaoCreate(BaseModel):
     pago: Optional[bool] = True
     conta_id: int
     categoria_id: Optional[int] = None
-    cartao_id: Optional[int] = None  # <--- Adicionado
+    cartao_id: Optional[int] = None
     forma_pagamento: Optional[str] = "debito"
     recorrente: Optional[bool] = False
     parcelado: Optional[bool] = False
     parcela_atual: Optional[int] = None
     total_parcelas: Optional[int] = None
 
-class TransacaoResponse(TransacaoCreate):
-    id: int
-
-    class Config:
-        from_attributes = True
-
 class TransacaoResponse(BaseModel):
     id: int
     descricao: str
     valor: float
     tipo: str
-    data_transacao: Union[str, datetime]  # Aceita string ou datetime
+    data_transacao: Union[str, datetime]
     pago: bool = True
     conta_id: int
     categoria_id: Optional[int] = None
+    cartao_id: Optional[int] = None
+    forma_pagamento: Optional[str] = "debito"
     recorrente: Optional[bool] = False
     parcelado: Optional[bool] = False
     parcela_atual: Optional[int] = None
@@ -180,6 +181,9 @@ class TransacaoResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# ==========================================
+# SCHEMAS DE CARTÕES DE CRÉDITO
+# ==========================================
 class CartaoCreate(BaseModel):
     nome: str
     limite: float
@@ -192,46 +196,3 @@ class CartaoResponse(CartaoCreate):
 
     class Config:
         from_attributes = True
-
-from typing import Optional
-from pydantic import BaseModel
-
-# Exemplo de como deve estar no backend/schemas.py:
-class OrcamentoCreate(BaseModel):
-    limite: float
-    mes_ano: str
-    categoria_id: int
-
-class OrcamentoUpdate(BaseModel):
-    limite: Optional[float] = None
-    mes_ano: Optional[str] = None
-    categoria_id: Optional[int] = None
-
-# backend/schemas.py
-from pydantic import BaseModel
-from typing import Optional
-
-class UsuarioCreate(BaseModel):
-    nome: str
-    email: str
-    senha: str
-    p1: str
-    r1: str
-    p2: str
-    r2: str
-    p3: str
-    r3: str
-
-class ValidarPerguntasRequest(BaseModel):
-    email: str
-    r1: str
-    r2: str
-    r3: str
-
-class RedefinirSenhaRequest(BaseModel):
-    email: str
-    nova_senha: str
-
-class AlterarSenhaLogadoRequest(BaseModel):
-    senha_atual: str
-    nova_senha: str

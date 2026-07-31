@@ -22,7 +22,15 @@ interface Transacao {
   total_parcelas?: number;
 }
 interface Categoria { id: number; nome: string; tipo: string; }
-interface Orcamento { id: number; limite: number; mes_ano: string; categoria_id: number; usuario_id: number; }
+interface Orcamento { 
+  id: number; 
+  limite: number; 
+  mes_ano: string; 
+  categoria_id: number; 
+  usuario_id: number; 
+  reservar_saldo?: boolean;
+  valor_reservado?: number;
+}
 interface MetaEconomia { id: number; titulo: string; valor_alvo: number; valor_atual: number; data_limite?: string; usuario_id: number; }
 interface FluxoCaixaMes { mes: string; entradas: number; saidas: number; liquido: number; }
 
@@ -76,7 +84,6 @@ export default function App() {
   const [cartaoSelecionadoVisualizacao, setCartaoSelecionadoVisualizacao] = useState<number | 'todos'>('todos');
   const [darkMode, setDarkMode] = useState(false);
   
-  // Estado para controle do menu lateral no celular
   const [sidebarAberta, setSidebarAberta] = useState(false);
 
   const [modalTransacaoAberto, setModalTransacaoAberto] = useState(false);
@@ -100,7 +107,16 @@ export default function App() {
 
   const [formConta, setFormConta] = useState({ nome: '', instituicao: '', saldo_inicial: '' });
   const [formCartao, setFormCartao] = useState({ nome: '', limite: '', dia_fechamento: '25', dia_vencimento: '2' });
-  const [formOrcamento, setFormOrcamento] = useState({ categoria_id: '', limite: '', mes_ano: new Date().toISOString().substring(0, 7) });
+  
+  // Atualizado com os campos de reserva de saldo
+  const [formOrcamento, setFormOrcamento] = useState({ 
+    categoria_id: '', 
+    limite: '', 
+    mes_ano: new Date().toISOString().substring(0, 7),
+    reservar_saldo: false,
+    valor_reservado: ''
+  });
+
   const [formMetaEconomia, setFormMetaEconomia] = useState({ titulo: '', valor_alvo: '', data_limite: '' });
 
   const buscarDados = async (userId: number) => {
@@ -478,13 +494,16 @@ export default function App() {
     } catch (e) { console.error(e); }
   };
 
+  // Submissão do Orçamento atualizada para suportar reserva de saldo
   const handleSubmeterOrcamento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuarioLogado) return;
     const payload = {
       limite: parseFloat(formOrcamento.limite.replace(',', '.')),
       mes_ano: formOrcamento.mes_ano,
-      categoria_id: parseInt(formOrcamento.categoria_id)
+      categoria_id: parseInt(formOrcamento.categoria_id),
+      reservar_saldo: formOrcamento.reservar_saldo,
+      valor_reservado: formOrcamento.reservar_saldo ? parseFloat(formOrcamento.valor_reservado.replace(',', '.')) || parseFloat(formOrcamento.limite.replace(',', '.')) : 0
     };
     try {
       const url = orcamentoEditandoId ? `${API_URL}/orcamentos/${orcamentoEditandoId}` : `${API_URL}/usuarios/${usuarioLogado.id}/orcamentos/`;
@@ -496,7 +515,7 @@ export default function App() {
       if (res.ok) {
         setModalOrcamentoAberto(false);
         setOrcamentoEditandoId(null);
-        setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7) });
+        setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7), reservar_saldo: false, valor_reservado: '' });
         buscarDados(usuarioLogado.id);
       }
     } catch (e) { console.error(e); }
@@ -507,7 +526,9 @@ export default function App() {
     setFormOrcamento({
       categoria_id: orc.categoria_id.toString(),
       limite: orc.limite.toString(),
-      mes_ano: orc.mes_ano
+      mes_ano: orc.mes_ano,
+      reservar_saldo: orc.reservar_saldo || false,
+      valor_reservado: orc.valor_reservado ? orc.valor_reservado.toString() : ''
     });
     setModalOrcamentoAberto(true);
   };
@@ -651,7 +672,14 @@ export default function App() {
   
   const entradasVisiveis = transacoesVisiveis.filter(t => t.tipo === 'entrada' && t.pago !== false).reduce((acc, t) => acc + t.valor, 0);
   const saidasVisiveis = transacoesVisiveis.filter(t => t.tipo === 'saida' && (t.pago !== false || t.forma_pagamento !== 'credito')).reduce((acc, t) => acc + t.valor, 0);
-  const saldoAtualVisivel = saldoInicialVisivel + entradasVisiveis - saidasVisiveis;
+
+  // Cálculo do total de valores reservados em orçamentos do mês atual para descontar do saldo disponível
+  const mesAtualGlobal = new Date().toISOString().substring(0, 7);
+  const totalReservadoOrcamentos = orcamentos
+    .filter(orc => orc.reservar_saldo && orc.mes_ano === mesAtualGlobal)
+    .reduce((acc, orc) => acc + (orc.valor_reservado || orc.limite), 0);
+
+  const saldoAtualVisivel = saldoInicialVisivel + entradasVisiveis - saidasVisiveis - totalReservadoOrcamentos;
 
   const formatarMoeda = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formatarData = (str: string) => new Date(str).toLocaleDateString('pt-BR');
@@ -847,7 +875,6 @@ export default function App() {
   return (
     <div className={`flex h-screen relative overflow-hidden transition-colors duration-200 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-slate-900'}`}>
       
-      {/* Overlay Escuro no Celular (quando o menu está aberto) */}
       {sidebarAberta && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
@@ -855,14 +882,13 @@ export default function App() {
         ></div>
       )}
 
-      {/* SIDEBAR LATERAL (Drawer Responsivo) */}
+      {/* SIDEBAR LATERAL */}
       <aside className={`w-64 flex flex-col z-50 border-r ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-900 border-slate-800'} text-white fixed inset-y-0 left-0 transform ${sidebarAberta ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
         <div className="p-6 border-b border-slate-800 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-emerald-400">FinIA</h1>
             <p className="text-xs text-slate-400 mt-1">Olá, {usuarioLogado.nome}</p>
           </div>
-          {/* Botão fechar apenas visível no mobile */}
           <button onClick={() => setSidebarAberta(false)} className="md:hidden text-slate-400 hover:text-white">✕</button>
         </div>
         
@@ -936,7 +962,6 @@ export default function App() {
       <main className="flex-1 p-4 md:p-8 overflow-y-auto relative w-full">
         <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 md:mb-8 gap-4">
           <div className="flex items-center gap-3">
-            {/* Botão de Menu Hambúrguer (Mobile) */}
             <button 
               className={`md:hidden p-2.5 rounded-lg border flex items-center justify-center ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-800 shadow-sm'}`}
               onClick={() => setSidebarAberta(true)}
@@ -963,7 +988,7 @@ export default function App() {
             </button>
             <button onClick={() => {
               setOrcamentoEditandoId(null);
-              setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7) });
+              setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7), reservar_saldo: false, valor_reservado: '' });
               setModalOrcamentoAberto(true);
             }} className="flex-1 lg:flex-none justify-center bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-3 py-2.5 rounded-lg font-medium shadow-sm text-sm whitespace-nowrap">
               🎯 Orçamento
@@ -988,10 +1013,13 @@ export default function App() {
         {/* CARDS RESUMO DE VALORES */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
           <div className={`p-5 md:p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-            <h3 className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Saldo Atual</h3>
+            <h3 className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Saldo Disponível</h3>
             <p className={`text-2xl md:text-3xl font-bold mt-2 truncate ${saldoAtualVisivel >= 0 ? (darkMode ? 'text-white' : 'text-slate-800') : 'text-red-500'}`}>
               {carregando ? "..." : formatarMoeda(saldoAtualVisivel)}
             </p>
+            {totalReservadoOrcamentos > 0 && (
+              <p className="text-[11px] text-amber-400 mt-1">🔒 {formatarMoeda(totalReservadoOrcamentos)} reservados em orçamentos</p>
+            )}
           </div>
           <div className={`p-5 md:p-6 rounded-xl shadow-sm border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <h3 className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Entradas</h3>
@@ -1059,10 +1087,10 @@ export default function App() {
         {/* ORÇAMENTO / TETO DE GASTOS */}
         <div className={`p-5 md:p-6 rounded-xl shadow-sm border mb-8 ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-            <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Orçamento por Categoria</h3>
+            <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Orçamento por Categoria (Teto de Gastos)</h3>
             <button onClick={() => {
               setOrcamentoEditandoId(null);
-              setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7) });
+              setFormOrcamento({ categoria_id: categorias[0]?.id.toString() || '', limite: '', mes_ano: new Date().toISOString().substring(0, 7), reservar_saldo: false, valor_reservado: '' });
               setModalOrcamentoAberto(true);
             }} className="text-xs w-full sm:w-auto text-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg">
               + Novo Teto
@@ -1086,7 +1114,14 @@ export default function App() {
                 return (
                   <div key={orc.id} className={`p-4 rounded-lg border ${darkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold text-sm">{cat ? cat.nome : 'Categoria'}</span>
+                      <div>
+                        <span className="font-semibold text-sm">{cat ? cat.nome : 'Categoria'}</span>
+                        {orc.reservar_saldo && (
+                          <span className="ml-2 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-medium">
+                            🔒 Reservado: {formatarMoeda(orc.valor_reservado || orc.limite)}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] sm:text-xs text-slate-400">{formatarMoeda(gastoCategoria)} / {formatarMoeda(orc.limite)}</span>
                         <button onClick={() => abrirEdicaoOrcamento(orc)} className="text-slate-400 hover:text-blue-400 text-xs" title="Editar Orçamento">✎</button>
@@ -1476,7 +1511,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL ORÇAMENTO */}
+      {/* MODAL ORÇAMENTO (Atualizado com opção de reserva de saldo) */}
       {modalOrcamentoAberto && (
         <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
@@ -1520,6 +1555,37 @@ export default function App() {
                 <input type="month" required value={formOrcamento.mes_ano} onChange={e => setFormOrcamento({...formOrcamento, mes_ano: e.target.value})}
                   className={`w-full p-3 border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} />
               </div>
+
+              {/* Opção de Reservar Saldo */}
+              <div className="bg-slate-800/30 p-3.5 rounded-xl border border-slate-700/50 space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={formOrcamento.reservar_saldo} 
+                    onChange={e => setFormOrcamento({...formOrcamento, reservar_saldo: e.target.checked, valor_reservado: e.target.checked ? formOrcamento.limite : ''})} 
+                    className="accent-emerald-500 w-4 h-4 rounded"
+                  />
+                  <span className="text-sm font-medium">Reservar este valor do saldo atual</span>
+                </label>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Quando marcado, o valor será separado do seu saldo disponível para garantir que fique guardado exclusivamente para este orçamento.
+                </p>
+
+                {formOrcamento.reservar_saldo && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Valor a ser reservado (R$)</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="Ex: 500.00" 
+                      value={formOrcamento.valor_reservado} 
+                      onChange={e => setFormOrcamento({...formOrcamento, valor_reservado: e.target.value})}
+                      className={`w-full p-2.5 text-sm border rounded-lg outline-none ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`} 
+                    />
+                  </div>
+                )}
+              </div>
+
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-4">
                 {orcamentoEditandoId ? "Salvar Alterações" : "Salvar Orçamento"}
               </button>
